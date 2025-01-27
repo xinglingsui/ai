@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Chat</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --sunrise: #FFD700;
+            --deep-blue: #005F99;
+            --sky-blue: #00B4D8;
+            --golden-hour: #FFAA33;
+            --text-primary: rgba(255, 255, 255, 0.95);
+            --glass: rgba(255, 255, 255, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(
+                circle at 20% 20%,
+                var(--deep-blue) 0%,
+                #002233 100%
+            );
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        /* 动态星空背景 */
+        .cosmic-bg {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 80% 20%, var(--sunrise) 0%, transparent 50%),
+                radial-gradient(circle at 20% 80%, var(--sky-blue) 0%, transparent 70%);
+            opacity: 0.3;
+            animation: cosmic-pulse 20s infinite alternate;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(20px);
+        }
+
+        .chat-wrapper {
+            flex: 1;
+            background: var(--glass);
+            border-radius: 2rem;
+            box-shadow: 
+                0 0 50px rgba(0, 191, 255, 0.1),
+                0 0 30px rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .header {
+            padding: 1.5rem;
+            background: linear-gradient(
+                90deg,
+                rgba(0, 95, 153, 0.3),
+                rgba(0, 180, 216, 0.3)
+            );
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(
+                transparent,
+                var(--sunrise),
+                transparent 30%
+            );
+            animation: rotate 10s linear infinite;
+            opacity: 0.1;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            position: relative;
+            background: linear-gradient(to right, var(--sunrise), var(--sky-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        /* 自定义滚动条 */
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(var(--sunrise), var(--golden-hour));
+            border-radius: 4px;
+        }
+
+        .message {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: messageFloat 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+
+        @keyframes messageFloat {
+            from {
+                opacity: 0;
+                transform: translateY(20px) rotateZ(-1deg);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) rotateZ(0);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: var(--glass);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .user .avatar {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .bubble {
+            max-width: 70%;
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+            line-height: 1.6;
+            position: relative;
+            backdrop-filter: blur(8px);
+            transition: transform 0.3s ease;
+        }
+
+        .assistant .bubble {
+            background: linear-gradient(
+                135deg,
+                rgba(0, 180, 216, 0.2),
+                rgba(0, 95, 153, 0.2)
+            );
+            border: 1px solid rgba(0, 180, 216, 0.3);
+            box-shadow: 
+                0 4px 12px rgba(0, 95, 153, 0.2),
+                inset 0 0 8px rgba(0, 180, 216, 0.1);
+        }
+
+        .user .bubble {
+            background: linear-gradient(
+                45deg,
+                rgba(255, 215, 0, 0.2),
+                rgba(255, 170, 51, 0.2)
+            );
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 
+                0 4px 12px rgba(255, 170, 51, 0.2),
+                inset 0 0 8px rgba(255, 215, 0, 0.1);
+        }
+
+        .bubble::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            background: linear-gradient(
+                120deg,
+                rgba(255, 255, 255, 0.1),
+                transparent 50%
+            );
+        }
+
+        .input-wrapper {
+            padding: 2rem;
+            background: linear-gradient(
+                rgba(0, 0, 0, 0.2),
+                rgba(0, 0, 0, 0.4)
+            );
+        }
+
+        .input-container {
+            position: relative;
+            display: flex;
+            gap: 1rem;
+        }
+
+        input {
+            flex: 1;
+            padding: 1.2rem 2rem;
+            border: none;
+            border-radius: 1.2rem;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            box-shadow: 
+                0 0 0 2px var(--sky-blue),
+                0 0 20px rgba(0, 180, 216, 0.3);
+        }
+
+        button {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 1rem;
+            background: linear-gradient(
+                135deg,
+                var(--sunrise),
+                var(--golden-hour)
+            );
+            color: var(--deep-blue);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transition: left 0.6s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 4px 20px rgba(255, 215, 0, 0.3),
+                0 0 10px rgba(255, 215, 0, 0.2);
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        /* 动态加载指示器 */
+        .typing-indicator {
+            display: inline-flex;
+            gap: 8px;
+            padding: 1.2rem 2rem;
+            background: var(--glass);
+            border-radius: 1.2rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .typing-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--sunrise);
+            border-radius: 50%;
+            animation: typing 1.6s infinite ease-in-out;
+            filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.3));
+        }
+
+        @keyframes cosmic-pulse {
+            0% { opacity: 0.2; }
+            100% { opacity: 0.4; }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); opacity: 0.6; }
+            50% { transform: translateY(-6px); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .bubble {
+                max-width: 85%;
+                padding: 1rem;
+            }
+
+            button span {
+                display: none;
+            }
+
+            input {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cosmic-bg"></div>
+    
+    <div class="container">
+        <div class="chat-wrapper">
+            <div class="header">
+                <h1>Lumina AI</h1>
+            </div>
+            
+            <div class="chat-container" id="chat-container">
+                <div class="message assistant" style="opacity: 1;">
+                    <div class="avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="bubble">
+                        您好！我是您的星辰助手，让我们开始探索知识的宇宙吧 🌌
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-wrapper">
+                <div class="input-container">
+                    <input type="text" id="user-input" placeholder="输入消息..." autocomplete="off">
+                    <button onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>发送</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let messages = [{role: "assistant", content: "您好！我是您的星辰助手，让我们开始探索知识的宇宙吧 🌌"}];
+        const workerUrl = 'https://ai-api.0xwl.top/';
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const userMessage = input.value.trim();
+            if (!userMessage) return;
+
+            messages.push({ role: "user", content: userMessage });
+            addMessage(userMessage, 'user');
+            input.value = '';
+            
+            showTypingIndicator(true);
+
+            try {
+                const response = await fetch(workerUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages })
+                });
+
+                const data = await response.json();
+                const reply = data.choices[0].message.content;
+                
+                messages.push({ role: "assistant", content: reply });
+                addMessage(reply, 'assistant');
+
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('🚀 通信信号中断，正在尝试重新连接...', 'assistant');
+            } finally {
+                showTypingIndicator(false);
+            }
+        }
+
+        function addMessage(content, role) {
+            const container = document.getElementById('chat-container');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            messageDiv.innerHTML = `
+                <div class="avatar">
+                    ${role === 'user' ? 
+                        '<i class="fas fa-user-astronaut"></i>' : 
+                        '<i class="fas fas fa-robot"></i>'}
+                </div>
+                <div class="bubble">${content}</div>
+            `;
+
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            setTimeout(() => {
+                messageDiv.style.opacity = '1';
+            }, 10);
+        }
+
+        function showTypingIndicator(show) {
+            const existing = document.getElementById('typing-indicator');
+            if (existing) existing.remove();
+
+            if (show) {
+                const container = document.getElementById('chat-container');
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'message assistant';
+                typingDiv.id = 'typing-indicator';
+                typingDiv.innerHTML = `
+                    <div class="avatar">
+                        <i class="fas fa-stars"></i>
+                    </div>
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                `;
+                container.appendChild(typingDiv);
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        document.getElementById('user-input').focus();
+    </script>
+</body>
+</html>
